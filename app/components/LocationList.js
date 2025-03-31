@@ -110,7 +110,7 @@ export function LocationList({ locations, setLocations }) {
 
       {/* Counter for total number of locations */}
       <p className="text-center text-gray-700 mb-4">
-        סה"כ מיקומים: {locations.length}
+        סה&quot;כ מיקומים: {locations.length}
       </p>
 
       {/* Locations List */}

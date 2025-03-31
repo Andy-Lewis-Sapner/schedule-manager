@@ -84,7 +84,7 @@ export function PeopleList({ people, setPeople }) {
 
       {/* Counter for total number of people */}
       <p className="text-center text-gray-700 mb-4">
-        סה"כ אנשים: {people.length}
+        סה&quot;כ אנשים: {people.length}
       </p>
 
       {/* Managers Section */}
