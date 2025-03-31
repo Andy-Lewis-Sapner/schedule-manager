@@ -5,8 +5,10 @@ import { supabase } from "../lib/supabase";
 import { ScheduleTable } from "./ScheduleTable";
 import { motion } from "framer-motion";
 import * as ExcelJS from "exceljs";
+import { useSupabase } from "../context/SupabaseContext";
 
 export function ScheduleContent() {
+  const { supabase, session, loading } = useSupabase();
   const [schedule, setSchedule] = useState(null);
   const [backUrl, setBackUrl] = useState("/"); // Default to main page
   const [backText, setBackText] = useState("חזור לדף הבית"); // Default text
@@ -36,6 +38,7 @@ export function ScheduleContent() {
       .from("schedules")
       .select("*")
       .eq("id", id)
+      .eq("user_id", session.user.id)
       .single();
     setSchedule(data);
   };

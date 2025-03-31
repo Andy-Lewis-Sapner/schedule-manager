@@ -2,8 +2,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "../lib/supabase";
+import { useSupabase } from "../context/SupabaseContext";
 
 export function LocationList({ locations, setLocations }) {
+  const { supabase, session, loading } = useSupabase();
   const [name, setName] = useState("");
   const [managersNeeded, setManagersNeeded] = useState(0);
   const [regularsNeeded, setRegularsNeeded] = useState(0);
@@ -24,6 +26,7 @@ export function LocationList({ locations, setLocations }) {
       managers_needed: managersNeeded,
       regulars_needed: regularsNeeded,
       slot_duration: slotDuration,
+      user_id: session.user.id,
     };
     const { data, error } = await supabase
       .from("locations")
@@ -44,7 +47,11 @@ export function LocationList({ locations, setLocations }) {
   };
 
   const handleDeleteLocation = async (id) => {
-    const { error } = await supabase.from("locations").delete().eq("id", id);
+    const { error } = await supabase
+      .from("locations")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", session.user.id);
     if (error) {
       alert("שגיאה במחיקת מיקום: " + error.message);
       return;

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "../lib/supabase";
+import { useSupabase } from "../context/SupabaseContext";
 
 export function PeopleList({ people, setPeople }) {
+  const { supabase, session, loading } = useSupabase();
   const [name, setName] = useState("");
   const [role, setRole] = useState("חייל");
 
@@ -16,7 +18,7 @@ export function PeopleList({ people, setPeople }) {
       alert("שם זה כבר קיים ברשימה");
       return;
     }
-    const newPerson = { name: name.trim(), role };
+    const newPerson = { name: name.trim(), role, user_id: session.user.id };
     const { data, error } = await supabase
       .from("people")
       .insert([newPerson])
@@ -34,7 +36,11 @@ export function PeopleList({ people, setPeople }) {
   };
 
   const handleDeletePerson = async (id) => {
-    const { error } = await supabase.from("people").delete().eq("id", id);
+    const { error } = await supabase
+      .from("people")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", session.user.id);
     if (error) {
       alert("שגיאה במחיקת אדם: " + error.message);
       return;
