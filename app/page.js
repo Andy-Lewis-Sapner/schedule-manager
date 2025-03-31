@@ -386,98 +386,118 @@ function generateSchedule(start, end, people, locations, waitTime) {
   slots.forEach((slot, slotIndex) => {
     const slotAssignments = locations.map(() => []);
 
-    // Assign managers
+    // Get available managers and regulars for this slot
+    const managers = people.filter((p) => p.role === "מפקד");
+    let availableManagers = managers
+      .filter((m) => availability[m.id] <= slot.start)
+      .sort((a, b) => availability[a.id] - availability[b.id]);
+
+    const regulars = people.filter((p) => p.role === "חייל");
+    let availableRegulars = regulars
+      .filter((r) => availability[r.id] <= slot.start)
+      .sort((a, b) => availability[a.id] - availability[b.id]);
+
+    // Process each location
     locations.forEach((loc, locIndex) => {
+      // Skip if the location isn't due for an assignment yet
       if (locationNextAssignmentTime[loc.id] > slot.start) {
+        // Don't push an empty assignment; let the previous assignment persist
         return;
       }
 
       const assigned = [];
 
-      if (loc.managers_needed > 0) {
-        const managers = people.filter((p) => p.role === "מפקד");
-        const availableManagers = managers
-          .filter((m) => availability[m.id] <= slot.start)
-          .sort((a, b) => availability[a.id] - availability[b.id]);
+      // Check if we have enough managers
+      const managersNeeded = loc.managers_needed || 0;
+      if (managersNeeded > 0 && availableManagers.length < managersNeeded) {
+        // Not enough managers, skip this location
+        locationAssignments[locIndex].push({
+          slotIndex,
+          assigned: [],
+          duration: loc.slot_duration || 4,
+        });
+        locationNextAssignmentTime[loc.id] = new Date(slot.start);
+        locationNextAssignmentTime[loc.id].setHours(
+          locationNextAssignmentTime[loc.id].getHours() +
+            (loc.slot_duration || 4)
+        );
+        return;
+      }
 
-        if (availableManagers.length >= loc.managers_needed) {
-          for (let i = 0; i < loc.managers_needed; i++) {
-            const manager = availableManagers[i];
-            assigned.push(manager);
-            const slotDuration = loc.slot_duration || 4;
-            const slotEndForManager = new Date(slot.start);
-            slotEndForManager.setHours(
-              slotEndForManager.getHours() + slotDuration
-            );
-            lastAssignmentEnd[manager.id] = new Date(slotEndForManager);
-            availability[manager.id] = new Date(lastAssignmentEnd[manager.id]);
-            availability[manager.id].setHours(
-              availability[manager.id].getHours() + waitTime
-            );
-          }
+      // Check if we have enough regulars
+      const regularsNeeded = loc.regulars_needed || 0;
+      if (regularsNeeded > 0 && availableRegulars.length < regularsNeeded) {
+        // Not enough regulars, skip this location
+        locationAssignments[locIndex].push({
+          slotIndex,
+          assigned: [],
+          duration: loc.slot_duration || 4,
+        });
+        locationNextAssignmentTime[loc.id] = new Date(slot.start);
+        locationNextAssignmentTime[loc.id].setHours(
+          locationNextAssignmentTime[loc.id].getHours() +
+            (loc.slot_duration || 4)
+        );
+        return;
+      }
+
+      // We have enough managers and regulars, proceed with assignment
+      // Assign managers
+      if (managersNeeded > 0) {
+        for (let i = 0; i < managersNeeded; i++) {
+          const manager = availableManagers[0];
+          assigned.push(manager);
+          const slotDuration = loc.slot_duration || 4;
+          const slotEndForManager = new Date(slot.start);
+          slotEndForManager.setHours(
+            slotEndForManager.getHours() + slotDuration
+          );
+          lastAssignmentEnd[manager.id] = new Date(slotEndForManager);
+          availability[manager.id] = new Date(lastAssignmentEnd[manager.id]);
+          availability[manager.id].setHours(
+            availability[manager.id].getHours() + waitTime
+          );
+          availableManagers = availableManagers.slice(1); // Remove the assigned manager
+        }
+      }
+
+      // Assign regulars
+      if (regularsNeeded > 0) {
+        for (let i = 0; i < regularsNeeded; i++) {
+          const regular = availableRegulars[0];
+          assigned.push(regular);
+          const slotDuration = loc.slot_duration || 4;
+          const slotEndForRegular = new Date(slot.start);
+          slotEndForRegular.setHours(
+            slotEndForRegular.getHours() + slotDuration
+          );
+          lastAssignmentEnd[regular.id] = new Date(slotEndForRegular);
+          availability[regular.id] = new Date(lastAssignmentEnd[regular.id]);
+          availability[regular.id].setHours(
+            availability[regular.id].getHours() + waitTime
+          );
+          availableRegulars = availableRegulars.slice(1); // Remove the assigned regular
         }
       }
 
       slotAssignments[locIndex] = assigned;
 
+      // Update the next assignment time for this location
       locationNextAssignmentTime[loc.id] = new Date(slot.start);
       locationNextAssignmentTime[loc.id].setHours(
         locationNextAssignmentTime[loc.id].getHours() + (loc.slot_duration || 4)
       );
 
+      // Store the assignment
       locationAssignments[locIndex].push({
         slotIndex,
         assigned,
         duration: loc.slot_duration || 4,
       });
     });
-
-    // Assign regulars
-    const regulars = people.filter((p) => p.role === "חייל");
-    let availableRegulars = regulars
-      .filter((r) => availability[r.id] <= slot.start)
-      .sort((a, b) => availability[a.id] - availability[b.id]);
-
-    const regularsNeededPerLocation = locations.map((loc, locIndex) => {
-      if (
-        loc.managers_needed === 0 ||
-        (loc.managers_needed > 0 &&
-          slotAssignments[locIndex].length >= loc.managers_needed)
-      ) {
-        return loc.regulars_needed || 0;
-      }
-      return 0;
-    });
-
-    // Assign regulars to locations that can be filled
-    regularsNeededPerLocation.forEach((regularsNeeded, locIndex) => {
-      if (regularsNeeded === 0) return;
-
-      const assigned = slotAssignments[locIndex];
-      for (let i = 0; i < regularsNeeded && availableRegulars.length > 0; i++) {
-        const regular = availableRegulars[0];
-        assigned.push(regular);
-        const slotDuration = locations[locIndex].slot_duration || 4;
-        const slotEndForRegular = new Date(slot.start);
-        slotEndForRegular.setHours(slotEndForRegular.getHours() + slotDuration);
-        lastAssignmentEnd[regular.id] = new Date(slotEndForRegular);
-        availability[regular.id] = new Date(lastAssignmentEnd[regular.id]);
-        availability[regular.id].setHours(
-          availability[regular.id].getHours() + waitTime
-        );
-        availableRegulars = regulars
-          .filter((r) => availability[r.id] <= slot.start)
-          .sort((a, b) => availability[a.id] - availability[b.id]);
-      }
-
-      const currentAssignment =
-        locationAssignments[locIndex][locationAssignments[locIndex].length - 1];
-      if (currentAssignment && currentAssignment.slotIndex === slotIndex) {
-        currentAssignment.assigned = assigned;
-      }
-    });
   });
 
+  // Populate the assignments for each slot
   slots.forEach((slot, slotIndex) => {
     const slotAssignments = locations.map(() => []);
 
@@ -503,6 +523,7 @@ function generateSchedule(start, end, people, locations, waitTime) {
     assignments[slot.key] = slotAssignments;
   });
 
+  // Sort the assignments by date
   const sortedAssignments = Object.entries(assignments).sort((a, b) => {
     const parseDate = (dateRange) => {
       const [startDateTime] = dateRange.split(" - ");
