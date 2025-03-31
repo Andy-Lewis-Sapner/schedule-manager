@@ -92,7 +92,7 @@ export default function SchedulerPage() {
 
     const durationHours = (end - start) / (1000 * 60 * 60);
     if (durationHours % 4 !== 0) {
-      alert("הפרש השעות בין ההתחלה לסיום חייב להיות מתחלק ב-4");
+      alert("הפרש השעות בין ההתחלה לסיום חייב להתחלק ב-4");
       return;
     }
 
@@ -123,7 +123,7 @@ export default function SchedulerPage() {
       .select()
       .single();
 
-    router.push(`/schedule?id=${data.id}`);
+    router.push(`/schedule?id=${data.id}&from=main`); // Add from=main
   };
 
   // Split people into managers and regular workers

@@ -57,7 +57,7 @@ export default function SchedulesPage() {
                 className="flex items-center justify-between bg-gray-50 p-3 rounded-lg shadow-sm"
               >
                 <Link
-                  href={`/schedule?id=${schedule.id}`}
+                  href={`/schedule?id=${schedule.id}&from=schedules`}
                   className="text-blue-500 hover:underline"
                 >
                   {formatDateTime(schedule.start_date)} -{" "}
