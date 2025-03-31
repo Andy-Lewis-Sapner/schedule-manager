@@ -339,15 +339,22 @@ export default function SchedulerPage() {
 function generateSchedule(start, end, people, locations, waitTime) {
   const assignments = {};
   const availability = people.reduce((acc, person) => {
-    acc[person.id] = new Date(start);
+    acc[person.id] = new Date(start); // Tracks the next available time for each person
+    return acc;
+  }, {});
+  const lastAssignmentEnd = people.reduce((acc, person) => {
+    acc[person.id] = new Date(start); // Initially set to the start time
     return acc;
   }, {});
 
-  const minSlotDuration = 4;
+  const minSlotDuration =
+    locations.length > 0
+      ? Math.min(...locations.map((loc) => loc.slot_duration || 4))
+      : 4;
+
   let current = new Date(start);
   const slots = [];
 
-  // Generate slots and store their timestamps for sorting
   while (current < end) {
     const slotStart = new Date(current);
     const slotEnd = new Date(current);
@@ -369,56 +376,133 @@ function generateSchedule(start, end, people, locations, waitTime) {
     current.setHours(current.getHours() + minSlotDuration);
   }
 
-  locations.forEach((loc, locIndex) => {
-    let locCurrent = new Date(start);
-    while (locCurrent < end) {
-      const locSlotEnd = new Date(locCurrent);
-      locSlotEnd.setHours(locSlotEnd.getHours() + loc.slot_duration);
-      if (locSlotEnd > end) locSlotEnd.setTime(end.getTime());
+  const locationNextAssignmentTime = locations.reduce((acc, loc) => {
+    acc[loc.id] = new Date(start);
+    return acc;
+  }, {});
 
-      const managers = people.filter((p) => p.role === "מפקד");
-      const regulars = people.filter((p) => p.role === "חייל");
+  const locationAssignments = locations.map(() => []);
+
+  slots.forEach((slot, slotIndex) => {
+    const slotAssignments = locations.map(() => []);
+
+    // Assign managers
+    locations.forEach((loc, locIndex) => {
+      if (locationNextAssignmentTime[loc.id] > slot.start) {
+        return;
+      }
+
       const assigned = [];
 
-      for (let i = 0; i < loc.managers_needed; i++) {
-        const availableManager = managers.find(
-          (m) => availability[m.id] <= locCurrent
-        );
-        if (availableManager) {
-          assigned.push(availableManager);
-          availability[availableManager.id] = new Date(locSlotEnd);
-          availability[availableManager.id].setHours(
-            availability[availableManager.id].getHours() + waitTime
-          );
+      if (loc.managers_needed > 0) {
+        const managers = people.filter((p) => p.role === "מפקד");
+        const availableManagers = managers
+          .filter((m) => availability[m.id] <= slot.start)
+          .sort((a, b) => availability[a.id] - availability[b.id]);
+
+        if (availableManagers.length >= loc.managers_needed) {
+          for (let i = 0; i < loc.managers_needed; i++) {
+            const manager = availableManagers[i];
+            assigned.push(manager);
+            const slotDuration = loc.slot_duration || 4;
+            const slotEndForManager = new Date(slot.start);
+            slotEndForManager.setHours(
+              slotEndForManager.getHours() + slotDuration
+            );
+            lastAssignmentEnd[manager.id] = new Date(slotEndForManager);
+            availability[manager.id] = new Date(lastAssignmentEnd[manager.id]);
+            availability[manager.id].setHours(
+              availability[manager.id].getHours() + waitTime
+            );
+          }
         }
       }
 
-      for (let i = 0; i < loc.regulars_needed; i++) {
-        const availableRegular = regulars.find(
-          (r) => availability[r.id] <= locCurrent
-        );
-        if (availableRegular) {
-          assigned.push(availableRegular);
-          availability[availableRegular.id] = new Date(locSlotEnd);
-          availability[availableRegular.id].setHours(
-            availability[availableRegular.id].getHours() + waitTime
-          );
-        }
-      }
+      slotAssignments[locIndex] = assigned;
 
-      slots.forEach((slot) => {
-        if (slot.start < locSlotEnd && slot.end > locCurrent) {
-          if (!assignments[slot.key])
-            assignments[slot.key] = locations.map(() => []);
-          assignments[slot.key][locIndex] = [...assigned];
-        }
+      locationNextAssignmentTime[loc.id] = new Date(slot.start);
+      locationNextAssignmentTime[loc.id].setHours(
+        locationNextAssignmentTime[loc.id].getHours() + (loc.slot_duration || 4)
+      );
+
+      locationAssignments[locIndex].push({
+        slotIndex,
+        assigned,
+        duration: loc.slot_duration || 4,
       });
+    });
 
-      locCurrent.setHours(locCurrent.getHours() + loc.slot_duration);
-    }
+    // Assign regulars
+    const regulars = people.filter((p) => p.role === "חייל");
+    let availableRegulars = regulars
+      .filter((r) => availability[r.id] <= slot.start)
+      .sort((a, b) => availability[a.id] - availability[b.id]);
+
+    const regularsNeededPerLocation = locations.map((loc, locIndex) => {
+      if (
+        loc.managers_needed === 0 ||
+        (loc.managers_needed > 0 &&
+          slotAssignments[locIndex].length >= loc.managers_needed)
+      ) {
+        return loc.regulars_needed || 0;
+      }
+      return 0;
+    });
+
+    // Assign regulars to locations that can be filled
+    regularsNeededPerLocation.forEach((regularsNeeded, locIndex) => {
+      if (regularsNeeded === 0) return;
+
+      const assigned = slotAssignments[locIndex];
+      for (let i = 0; i < regularsNeeded && availableRegulars.length > 0; i++) {
+        const regular = availableRegulars[0];
+        assigned.push(regular);
+        const slotDuration = locations[locIndex].slot_duration || 4;
+        const slotEndForRegular = new Date(slot.start);
+        slotEndForRegular.setHours(slotEndForRegular.getHours() + slotDuration);
+        lastAssignmentEnd[regular.id] = new Date(slotEndForRegular);
+        availability[regular.id] = new Date(lastAssignmentEnd[regular.id]);
+        availability[regular.id].setHours(
+          availability[regular.id].getHours() + waitTime
+        );
+        availableRegulars = regulars
+          .filter((r) => availability[r.id] <= slot.start)
+          .sort((a, b) => availability[a.id] - availability[b.id]);
+      }
+
+      const currentAssignment =
+        locationAssignments[locIndex][locationAssignments[locIndex].length - 1];
+      if (currentAssignment && currentAssignment.slotIndex === slotIndex) {
+        currentAssignment.assigned = assigned;
+      }
+    });
   });
 
-  // Create the final sorted assignments object
+  slots.forEach((slot, slotIndex) => {
+    const slotAssignments = locations.map(() => []);
+
+    locations.forEach((loc, locIndex) => {
+      const relevantAssignment = locationAssignments[locIndex].find(
+        (assignment) => {
+          const assignmentStartSlot = assignment.slotIndex;
+          const slotsCovered = Math.ceil(
+            (assignment.duration || 4) / minSlotDuration
+          );
+          const assignmentEndSlot = assignmentStartSlot + slotsCovered - 1;
+          return (
+            slotIndex >= assignmentStartSlot && slotIndex <= assignmentEndSlot
+          );
+        }
+      );
+
+      if (relevantAssignment) {
+        slotAssignments[locIndex] = relevantAssignment.assigned;
+      }
+    });
+
+    assignments[slot.key] = slotAssignments;
+  });
+
   const sortedAssignments = Object.entries(assignments).sort((a, b) => {
     const parseDate = (dateRange) => {
       const [startDateTime] = dateRange.split(" - ");
@@ -430,8 +514,6 @@ function generateSchedule(start, end, people, locations, waitTime) {
 
     const dateA = parseDate(a[0]);
     const dateB = parseDate(b[0]);
-
-    console.log(dateA - dateB);
 
     return dateA - dateB;
   });

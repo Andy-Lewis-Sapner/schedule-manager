@@ -1,14 +1,15 @@
 "use client";
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { supabase } from "../lib/supabase";
 
-export function LocationList({ locations, setLocations, setHasChanges }) {
+export function LocationList({ locations, setLocations }) {
   const [name, setName] = useState("");
   const [managersNeeded, setManagersNeeded] = useState(0);
   const [regularsNeeded, setRegularsNeeded] = useState(0);
   const [slotDuration, setSlotDuration] = useState(4);
 
-  const handleAddLocation = (e) => {
+  const handleAddLocation = async (e) => {
     e.preventDefault();
     if (!name.trim()) {
       alert("שם המיקום לא יכול להיות ריק");
@@ -19,23 +20,36 @@ export function LocationList({ locations, setLocations, setHasChanges }) {
       return;
     }
     const newLocation = {
-      id: Date.now(),
       name: name.trim(),
       managers_needed: managersNeeded,
       regulars_needed: regularsNeeded,
       slot_duration: slotDuration,
     };
-    setLocations([...locations, newLocation]);
+    const { data, error } = await supabase
+      .from("locations")
+      .insert([newLocation])
+      .select()
+      .single();
+
+    if (error) {
+      alert("שגיאה בהוספת מיקום: " + error.message);
+      return;
+    }
+
+    setLocations([...locations, data]);
     setName("");
     setManagersNeeded(0);
     setRegularsNeeded(0);
     setSlotDuration(4);
-    setHasChanges(true);
   };
 
-  const handleDeleteLocation = (id) => {
+  const handleDeleteLocation = async (id) => {
+    const { error } = await supabase.from("locations").delete().eq("id", id);
+    if (error) {
+      alert("שגיאה במחיקת מיקום: " + error.message);
+      return;
+    }
     setLocations(locations.filter((loc) => loc.id !== id));
-    setHasChanges(true);
   };
 
   return (
@@ -53,7 +67,7 @@ export function LocationList({ locations, setLocations, setHasChanges }) {
         </div>
         <div className="flex gap-2">
           <div className="flex-1">
-            <label className="block text-gray-700 mb-1">מפקד:</label>
+            <label className="block text-gray-700 mb-1">מפקדים:</label>
             <input
               type="number"
               value={managersNeeded}
@@ -63,7 +77,7 @@ export function LocationList({ locations, setLocations, setHasChanges }) {
             />
           </div>
           <div className="flex-1">
-            <label className="block text-gray-700 mb-1">חייל:</label>
+            <label className="block text-gray-700 mb-1">חיילים:</label>
             <input
               type="number"
               value={regularsNeeded}
@@ -93,28 +107,43 @@ export function LocationList({ locations, setLocations, setHasChanges }) {
           הוסף
         </motion.button>
       </form>
-      {locations.length > 0 && (
-        <ul className="grid grid-cols-1 gap-2">
+
+      {/* Counter for total number of locations */}
+      <p className="text-center text-gray-700 mb-4">
+        סה"כ מיקומים: {locations.length}
+      </p>
+
+      {/* Locations List */}
+      {locations.length > 0 ? (
+        <ul className="grid grid-cols-2 gap-3">
           {locations.map((loc) => (
             <motion.li
               key={loc.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center justify-between bg-white p-2 rounded shadow"
+              className="bg-cyan-100 p-4 rounded-lg shadow-md flex justify-between items-start"
             >
-              <span>
-                {loc.name} ({loc.managers_needed} מפקדים, {loc.regulars_needed}{" "}
-                חיילים, {loc.slot_duration} שעות)
-              </span>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  {loc.name}
+                </h3>
+                <div className="text-gray-600 text-sm">
+                  <p>מפקדים נדרשים: {loc.managers_needed}</p>
+                  <p>חיילים נדרשים: {loc.regulars_needed}</p>
+                  <p>משך זמן: {loc.slot_duration} שעות</p>
+                </div>
+              </div>
               <button
                 onClick={() => handleDeleteLocation(loc.id)}
-                className="text-red-500 hover:text-red-700 font-bold"
+                className="text-red-500 hover:text-red-700 font-bold text-lg"
               >
                 X
               </button>
             </motion.li>
           ))}
         </ul>
+      ) : (
+        <p className="text-center text-gray-500">אין מיקומים</p>
       )}
     </div>
   );

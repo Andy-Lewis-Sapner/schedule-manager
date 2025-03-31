@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { supabase } from "../lib/supabase";
 
-export function PeopleList({ people, setPeople, setHasChanges }) {
+export function PeopleList({ people, setPeople }) {
   const [name, setName] = useState("");
   const [role, setRole] = useState("חייל");
 
-  const handleAddPerson = (e) => {
+  const handleAddPerson = async (e) => {
     e.preventDefault();
     if (!name.trim()) {
       alert("שם האדם לא יכול להיות ריק");
@@ -15,17 +16,35 @@ export function PeopleList({ people, setPeople, setHasChanges }) {
       alert("שם זה כבר קיים ברשימה");
       return;
     }
-    const newPerson = { id: Date.now(), name: name.trim(), role };
-    setPeople([...people, newPerson]);
+    const newPerson = { name: name.trim(), role };
+    const { data, error } = await supabase
+      .from("people")
+      .insert([newPerson])
+      .select()
+      .single();
+
+    if (error) {
+      alert("שגיאה בהוספת אדם: " + error.message);
+      return;
+    }
+
+    setPeople([...people, data]);
     setName("");
     setRole("חייל");
-    setHasChanges(true);
   };
 
-  const handleDeletePerson = (id) => {
+  const handleDeletePerson = async (id) => {
+    const { error } = await supabase.from("people").delete().eq("id", id);
+    if (error) {
+      alert("שגיאה במחיקת אדם: " + error.message);
+      return;
+    }
     setPeople(people.filter((p) => p.id !== id));
-    setHasChanges(true);
   };
+
+  // Split people into managers and regulars
+  const managers = people.filter((person) => person.role === "מפקד");
+  const regulars = people.filter((person) => person.role === "חייל");
 
   return (
     <div>
@@ -62,28 +81,65 @@ export function PeopleList({ people, setPeople, setHasChanges }) {
           הוסף
         </motion.button>
       </form>
-      {people.length > 0 && (
-        <ul className="grid grid-cols-2 gap-2">
-          {people.map((person) => (
-            <motion.li
-              key={person.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center justify-between bg-white p-2 rounded shadow"
-            >
-              <span>
-                {person.name} {person.role === "מפקד" ? "(מפקד)" : ""}
-              </span>
-              <button
-                onClick={() => handleDeletePerson(person.id)}
-                className="text-red-500 hover:text-red-700 font-bold"
+
+      {/* Counter for total number of people */}
+      <p className="text-center text-gray-700 mb-4">
+        סה"כ אנשים: {people.length}
+      </p>
+
+      {/* Managers Section */}
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold mb-2">מפקדים</h2>
+        {managers.length > 0 ? (
+          <ul className="grid grid-cols-3 gap-2">
+            {managers.map((person) => (
+              <motion.li
+                key={person.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center justify-between bg-cyan-50 p-2 rounded shadow"
               >
-                X
-              </button>
-            </motion.li>
-          ))}
-        </ul>
-      )}
+                <span>{person.name}</span>
+                <button
+                  onClick={() => handleDeletePerson(person.id)}
+                  className="text-red-500 hover:text-red-700 font-bold"
+                >
+                  X
+                </button>
+              </motion.li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center text-gray-500">אין מפקדים</p>
+        )}
+      </div>
+
+      {/* Regulars Section */}
+      <div>
+        <h2 className="text-lg font-semibold mb-2">חיילים</h2>
+        {regulars.length > 0 ? (
+          <ul className="grid grid-cols-3 gap-2">
+            {regulars.map((person) => (
+              <motion.li
+                key={person.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center justify-between bg-cyan-100 p-2 rounded shadow"
+              >
+                <span>{person.name}</span>
+                <button
+                  onClick={() => handleDeletePerson(person.id)}
+                  className="text-red-500 hover:text-red-700 font-bold"
+                >
+                  X
+                </button>
+              </motion.li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center text-gray-500">אין חיילים</p>
+        )}
+      </div>
     </div>
   );
 }
