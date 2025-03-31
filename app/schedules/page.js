@@ -1,28 +1,44 @@
 "use client";
 import { useState, useEffect } from "react";
-import { supabase } from "../lib/supabase";
+import { useSupabase } from "../context/SupabaseContext";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function SchedulesPage() {
+  const { supabase, session, loading } = useSupabase();
   const [schedules, setSchedules] = useState([]);
+  const router = useRouter();
 
   useEffect(() => {
-    fetchSchedules();
-  }, []);
+    if (!loading && !session) {
+      router.push("/login");
+    } else if (session) {
+      fetchSchedules();
+    }
+  }, [session, loading, router]);
 
   const fetchSchedules = async () => {
     const { data } = await supabase
       .from("schedules")
       .select("*")
+      .eq("user_id", session.user.id)
       .order("start_date", { ascending: true });
     setSchedules(data || []);
   };
 
   const handleDeleteSchedule = async (id) => {
     if (confirm("האם אתה בטוח שברצונך למחוק את לוח הזמנים הזה?")) {
-      await supabase.from("schedules").delete().eq("id", id);
-      setSchedules(schedules.filter((schedule) => schedule.id !== id));
+      const { error } = await supabase
+        .from("schedules")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", session.user.id);
+      if (!error) {
+        setSchedules(schedules.filter((schedule) => schedule.id !== id));
+      } else {
+        alert("שגיאה במחיקת לוח זמנים: " + error.message);
+      }
     }
   };
 
@@ -33,6 +49,14 @@ export default function SchedulesPage() {
       timeStyle: "short",
     })}`;
   };
+
+  if (loading) {
+    return <div className="text-center mt-10">טוען...</div>;
+  }
+
+  if (!session) {
+    return null;
+  }
 
   return (
     <motion.div

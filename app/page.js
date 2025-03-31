@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "./lib/supabase";
+import { useSupabase } from "./context/SupabaseContext";
 import { motion } from "framer-motion";
 
 export default function SchedulerPage() {
+  const { supabase, session, loading } = useSupabase();
   const [people, setPeople] = useState([]);
   const [locations, setLocations] = useState([]);
   const [selectedPeople, setSelectedPeople] = useState([]);
@@ -16,33 +17,33 @@ export default function SchedulerPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Fetch data from Supabase
-    fetchData();
-
-    // Set default date and time values
-    const now = new Date(); // Current date: 2025-03-31
-    const currentHour = now.getHours().toString().padStart(2, "0");
-
-    // Set start date to today (format: YYYY-MM-DD)
-    const start = new Date(now);
-    setStartDate(start.toISOString().split("T")[0]); // e.g., "2025-03-31"
-
-    // Set start hour to current hour with 00 minutes (format: HH:00)
-    setStartHour(`${currentHour}:00`); // e.g., "14:00"
-
-    // Set end date and hour to 24 hours after the start
-    const end = new Date(start);
-    end.setHours(end.getHours() + 24); // Add 24 hours
-    setEndDate(end.toISOString().split("T")[0]); // e.g., "2025-04-01"
-    setEndHour(`${end.getHours().toString().padStart(2, "0")}:00`); // e.g., "14:00"
-  }, []);
+    if (!loading && !session) {
+      router.push("/login");
+    } else if (session) {
+      fetchData();
+      const now = new Date();
+      const currentHour = now.getHours().toString().padStart(2, "0");
+      const start = new Date(now);
+      setStartDate(start.toISOString().split("T")[0]);
+      setStartHour(`${currentHour}:00`);
+      const end = new Date(start);
+      end.setHours(end.getHours() + 24);
+      setEndDate(end.toISOString().split("T")[0]);
+      setEndHour(`${end.getHours().toString().padStart(2, "0")}:00`);
+    }
+  }, [session, loading, router]);
 
   const fetchData = async () => {
-    const { data: peopleData } = await supabase.from("people").select("*");
+    const { data: peopleData } = await supabase
+      .from("people")
+      .select("*")
+      .eq("user_id", session.user.id);
+    setPeople(peopleData || []);
+
     const { data: locationsData } = await supabase
       .from("locations")
-      .select("*");
-    setPeople(peopleData || []);
+      .select("*")
+      .eq("user_id", session.user.id);
     setLocations(locationsData || []);
   };
 
@@ -99,8 +100,9 @@ export default function SchedulerPage() {
     const { data: settingsData } = await supabase
       .from("settings")
       .select("wait_time")
+      .eq("user_id", session.user.id)
       .single();
-    const waitTime = settingsData.wait_time;
+    const waitTime = settingsData?.wait_time || 8;
 
     const assignments = generateSchedule(
       start,
@@ -109,10 +111,11 @@ export default function SchedulerPage() {
       selectedLocations,
       waitTime
     );
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("schedules")
       .insert([
         {
+          user_id: session.user.id,
           start_date: start,
           end_date: end,
           people: selectedPeople,
@@ -123,16 +126,18 @@ export default function SchedulerPage() {
       .select()
       .single();
 
-    router.push(`/schedule?id=${data.id}&from=main`); // Add from=main
+    if (error) {
+      alert("שגיאה ביצירת לוח זמנים: " + error.message);
+    } else {
+      router.push(`/schedule?id=${data.id}&from=main`);
+    }
   };
 
-  // Split people into managers and regular workers
   const managers = people.filter((person) => person.role === "מפקד");
   const regularWorkers = people.filter((person) => person.role !== "מפקד");
 
-  // Group locations by duration
   const locationsByDuration = locations.reduce((acc, loc) => {
-    const duration = loc.slot_duration || 4; // Default to 4 hours if duration is not specified
+    const duration = loc.slot_duration || 4;
     if (!acc[duration]) {
       acc[duration] = [];
     }
@@ -140,10 +145,17 @@ export default function SchedulerPage() {
     return acc;
   }, {});
 
-  // Sort durations for display (e.g., 4 hours, 8 hours, etc.)
   const sortedDurations = Object.keys(locationsByDuration).sort(
     (a, b) => a - b
   );
+
+  if (loading) {
+    return <div className="text-center mt-10">טוען...</div>;
+  }
+
+  if (!session) {
+    return null;
+  }
 
   return (
     <motion.div
@@ -178,7 +190,6 @@ export default function SchedulerPage() {
             מספר נבחרים: {selectedPeople.length}
           </p>
           <div className="max-h-40 overflow-y-auto bg-gray-50 p-3 rounded-lg shadow-inner">
-            {/* Managers Section */}
             {managers.length > 0 && (
               <>
                 <h3 className="text-md font-medium text-gray-800 mb-2">
@@ -203,7 +214,6 @@ export default function SchedulerPage() {
                 </div>
               </>
             )}
-            {/* Regular Workers Section */}
             {regularWorkers.length > 0 && (
               <>
                 <h3 className="text-md font-medium text-gray-800 mb-2">

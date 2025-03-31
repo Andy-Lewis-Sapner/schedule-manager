@@ -1,29 +1,41 @@
 "use client";
 import { useState, useEffect } from "react";
-import { supabase } from "../lib/supabase";
+import { useSupabase } from "../context/SupabaseContext";
 import { PeopleList } from "../components/PeopleList";
 import { LocationList } from "../components/LocationList";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 export default function ManagementPage() {
+  const { supabase, session, loading } = useSupabase();
   const [people, setPeople] = useState([]);
   const [locations, setLocations] = useState([]);
   const [waitTime, setWaitTime] = useState(8);
   const [originalWaitTime, setOriginalWaitTime] = useState(8);
   const [waitTimeChanged, setWaitTimeChanged] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (!loading && !session) {
+      router.push("/login");
+    } else if (session) {
+      fetchData();
+    }
+  }, [session, loading, router]);
 
   const fetchData = async () => {
-    const { data: peopleData } = await supabase.from("people").select("*");
+    const { data: peopleData } = await supabase
+      .from("people")
+      .select("*")
+      .eq("user_id", session.user.id);
     const { data: locationsData } = await supabase
       .from("locations")
-      .select("*");
+      .select("*")
+      .eq("user_id", session.user.id);
     const { data: settingsData } = await supabase
       .from("settings")
       .select("wait_time")
+      .eq("user_id", session.user.id)
       .single();
     setPeople(peopleData || []);
     setLocations(locationsData || []);
@@ -35,7 +47,7 @@ export default function ManagementPage() {
   const handleSaveWaitTime = async () => {
     const { error } = await supabase
       .from("settings")
-      .upsert([{ id: 1, wait_time: waitTime }]);
+      .upsert([{ user_id: session.user.id, wait_time: waitTime }]);
     if (error) {
       alert("שגיאה בשמירת זמן המתנה: " + error.message);
       return;
@@ -43,6 +55,14 @@ export default function ManagementPage() {
     setOriginalWaitTime(waitTime);
     setWaitTimeChanged(false);
   };
+
+  if (loading) {
+    return <div className="text-center mt-10">טוען...</div>;
+  }
+
+  if (!session) {
+    return null;
+  }
 
   return (
     <motion.div

@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Navbar } from "./components/Navbar";
+import { SupabaseProvider } from "./context/SupabaseContext";
 
 export const metadata = {
   title: "ניהול לוח זמנים",
@@ -16,8 +17,10 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="font-varela">
-        <Navbar />
-        {children}
+        <SupabaseProvider>
+          <Navbar />
+          {children}
+        </SupabaseProvider>
       </body>
     </html>
   );
