@@ -7,6 +7,7 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
+  const [note, setNote] = useState(null);
   const { supabase } = useSupabase();
   const router = useRouter();
 
@@ -21,28 +22,18 @@ export default function Register() {
 
     if (error) {
       setError(error.message);
-      return;
-    }
+    } else {
+      const userId = data.user.id; // Get the newly created user's ID
+      const { error: settingsError } = await supabase.from("settings").insert({
+        user_id: userId,
+        wait_time: 8,
+      });
 
-    // Get the user ID from the response
-    const userId = data?.user?.id;
-
-    if (userId) {
-      // Insert default settings for the new user
-      const { error: settingsError } = await supabase.from("settings").insert([
-        {
-          user_id: userId,
-          wait_time: 8,
-        },
-      ]);
-
+      setNote("בבקשה אשר את כתובת המייל שלך");
       if (settingsError) {
-        setError(settingsError.message);
-        return;
+        setError("שגיאה בהגדרת זמן המתנה ברירת מחדל: " + settingsError.message);
       }
     }
-
-    router.push("/login");
   };
 
   return (
@@ -70,6 +61,11 @@ export default function Register() {
             required
           />
         </div>
+        {note && (
+          <p className="justify-center text-center text-green-500 my-4">
+            {note}
+          </p>
+        )}
         <button
           type="submit"
           className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 transition"

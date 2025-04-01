@@ -20,7 +20,9 @@ export default function Login() {
     });
 
     if (error) {
-      setError(error.message);
+      if (error.message === "Invalid login credentials")
+        setError("מייל לא קיים או סיסמה שגויה");
+      else setError(error.message);
     } else {
       router.push("/");
     }
@@ -29,7 +31,6 @@ export default function Login() {
   return (
     <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
       <h1 className="text-2xl font-bold mb-4">התחברות</h1>
-      {error && <p className="text-red-500 mb-4">{error}</p>}
       <form onSubmit={handleLogin}>
         <div className="mb-4">
           <label className="block text-gray-700 mb-2">מייל</label>
@@ -51,6 +52,11 @@ export default function Login() {
             required
           />
         </div>
+        {error && (
+          <p className="text-red-500 justify-center text-center mb-4">
+            {error}
+          </p>
+        )}
         <button
           type="submit"
           className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition"
