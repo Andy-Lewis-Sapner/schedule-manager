@@ -38,7 +38,8 @@ export default function Login() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-2 border rounded"
+            className="w-full h-10 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 bg-gray-50 text-gray-800 placeholder-gray-400"
+            placeholder="example@example.com"
             required
           />
         </div>
@@ -48,7 +49,8 @@ export default function Login() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-2 border rounded"
+            className="w-full h-10 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 bg-gray-50 text-gray-800 placeholder-gray-400"
+            placeholder="⦁⦁⦁⦁⦁⦁⦁⦁"
             required
           />
         </div>
@@ -59,7 +61,7 @@ export default function Login() {
         )}
         <button
           type="submit"
-          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition"
+          className="w-full bg-blue-500 text-white py-2 rounded-full hover:bg-blue-600 transition"
         >
           התחבר
         </button>

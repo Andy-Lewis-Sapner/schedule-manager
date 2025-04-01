@@ -68,7 +68,7 @@ export function LocationList({ locations, setLocations }) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full h-10 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 bg-gray-50 text-gray-800 placeholder-gray-400"
             placeholder="הכנס שם מיקום"
           />
         </div>
@@ -79,7 +79,7 @@ export function LocationList({ locations, setLocations }) {
               type="number"
               value={managersNeeded}
               onChange={(e) => setManagersNeeded(parseInt(e.target.value))}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-10 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 bg-gray-50 text-gray-800 placeholder-gray-400"
               min="0"
             />
           </div>
@@ -89,7 +89,7 @@ export function LocationList({ locations, setLocations }) {
               type="number"
               value={regularsNeeded}
               onChange={(e) => setRegularsNeeded(parseInt(e.target.value))}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-10 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 bg-gray-50 text-gray-800 placeholder-gray-400"
               min="0"
             />
           </div>
@@ -99,7 +99,7 @@ export function LocationList({ locations, setLocations }) {
               type="number"
               value={slotDuration}
               onChange={(e) => setSlotDuration(parseInt(e.target.value))}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-10 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 bg-gray-50 text-gray-800 placeholder-gray-400"
               min="4"
               step="4"
             />

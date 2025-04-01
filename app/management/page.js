@@ -90,7 +90,7 @@ export default function ManagementPage() {
                 setWaitTime(newValue);
                 setWaitTimeChanged(newValue !== originalWaitTime);
               }}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-3/4 h-10 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 bg-gray-50 text-gray-800 placeholder-gray-400"
               min="0"
               step="4"
             />
@@ -99,7 +99,7 @@ export default function ManagementPage() {
               whileTap={{ scale: 0.95 }}
               onClick={handleSaveWaitTime}
               disabled={!waitTimeChanged}
-              className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition disabled:bg-gray-400"
+              className="w-1/4 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition disabled:bg-gray-400"
             >
               שמור
             </motion.button>
