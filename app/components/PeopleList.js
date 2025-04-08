@@ -146,7 +146,7 @@ export function PeopleList({ people, setPeople }) {
       </form>
 
       <p className="text-center text-gray-700 mb-4">
-        סה"כ אנשים: {people.length}
+        סה&quot;כ אנשים: {people.length}
       </p>
 
       <div className="mb-6">
