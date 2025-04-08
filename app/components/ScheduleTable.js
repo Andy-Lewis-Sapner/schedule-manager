@@ -5,22 +5,57 @@ import { useState } from "react";
 export function ScheduleTable({ schedule, locations }) {
   const [viewMode, setViewMode] = useState("cards"); // Default to cards for mobile
 
-  // The schedule is already an array of entries, sorted by the generateSchedule function
-  const sortedSlots = schedule;
+  // The schedule is already sorted by the generateSchedule function
+  const sortedSlots = schedule || []; // Ensure schedule is an array
 
-  // Function to parse the slot key and extract date and time for display
-  const parseSlotKey = (slotKey) => {
-    const [start, end] = slotKey.split(" - ");
-    const [startDate, startTime] = start.split(", ");
-    const [, endTime] = end.split(", ");
+  // Function to parse the slot start and end Date objects for display
+  const parseSlot = (slot) => {
+    // Convert start and end to Date objects, handling both Date objects and ISO strings
+    const start =
+      typeof slot.start === "string"
+        ? new Date(slot.start)
+        : slot.start instanceof Date
+        ? slot.start
+        : new Date();
+    const end =
+      typeof slot.end === "string"
+        ? new Date(slot.end)
+        : slot.end instanceof Date
+        ? slot.end
+        : new Date();
 
-    // Remove comma from the date for display
-    const date = startDate.replace(",", "");
+    // Ensure the dates are valid; if not, fallback to a default date
+    const validStart = !isNaN(start.getTime()) ? start : new Date();
+    const validEnd = !isNaN(end.getTime()) ? end : new Date();
 
-    // Always show only the time range, regardless of whether the dates differ
-    const timeRange = `${startTime} - ${endTime}`;
+    // Format the date in DD.MM.YY format using Hebrew locale
+    const startDate = validStart.toLocaleString("he-IL", {
+      day: "2-digit", // DD
+      month: "2-digit", // MM
+      year: "2-digit", // YY
+    }); // e.g., "08.04.25"
+
+    // Format the start and end times in 24-hour format using Hebrew locale
+    const startTime = validStart.toLocaleString("he-IL", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false, // 24-hour format
+    }); // e.g., "10:00"
+    const endTime = validEnd.toLocaleString("he-IL", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false, // 24-hour format
+    }); // e.g., "14:00"
+
+    const date = startDate; // e.g., "08.04.25"
+    const timeRange = `${startTime} - ${endTime}`; // e.g., "10:00 - 14:00"
 
     return { date, time: timeRange };
+  };
+
+  // Convert assignments object to array matching locations order
+  const getPeopleByLocation = (assignments) => {
+    return locations.map((loc) => assignments[loc.id] || []);
   };
 
   return (
@@ -61,8 +96,11 @@ export function ScheduleTable({ schedule, locations }) {
             </tr>
           </thead>
           <tbody>
-            {sortedSlots.map(([slot, peopleByLocation], index) => {
-              const { date, time } = parseSlotKey(slot);
+            {sortedSlots.map((slot, index) => {
+              const { date, time } = parseSlot(slot);
+              const peopleByLocation = getPeopleByLocation(
+                slot.assignments || {}
+              );
               return (
                 <motion.tr
                   key={index}
@@ -77,14 +115,14 @@ export function ScheduleTable({ schedule, locations }) {
                   <td className="p-2 border-b border-gray-300 text-center text-gray-800 text-sm md:text-base">
                     {time}
                   </td>
-                  {locations.map((_, i) => (
+                  {peopleByLocation.map((people, i) => (
                     <td
                       key={i}
                       className="p-2 border-b border-gray-300 text-center"
                     >
-                      {peopleByLocation[i] && peopleByLocation[i].length > 0 ? (
+                      {people.length > 0 ? (
                         <div className="space-y-1">
-                          {peopleByLocation[i].map((p) => (
+                          {people.map((p) => (
                             <div
                               key={p.id}
                               className={`inline-flex items-center px-2 m-[2px] py-1 rounded-md text-xs md:text-sm ${
@@ -118,8 +156,9 @@ export function ScheduleTable({ schedule, locations }) {
           viewMode === "cards" ? "block" : "hidden"
         } md:hidden space-y-4`}
       >
-        {sortedSlots.map(([slot, peopleByLocation], index) => {
-          const { date, time } = parseSlotKey(slot);
+        {sortedSlots.map((slot, index) => {
+          const { date, time } = parseSlot(slot);
+          const peopleByLocation = getPeopleByLocation(slot.assignments || {});
           return (
             <motion.div
               key={index}
@@ -138,7 +177,7 @@ export function ScheduleTable({ schedule, locations }) {
                     <h4 className="text-md font-medium text-gray-700">
                       {loc.name}
                     </h4>
-                    {peopleByLocation[i] && peopleByLocation[i].length > 0 ? (
+                    {peopleByLocation[i].length > 0 ? (
                       <div className="mt-1 space-y-1">
                         {peopleByLocation[i].map((p) => (
                           <div

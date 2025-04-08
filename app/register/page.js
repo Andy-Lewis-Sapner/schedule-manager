@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "../context/SupabaseContext";
 
@@ -14,7 +14,9 @@ export default function Register() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError(null);
+    setNote(null);
 
+    // Sign up the user
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -22,18 +24,23 @@ export default function Register() {
 
     if (error) {
       setError(error.message);
-    } else {
-      const userId = data.user.id; // Get the newly created user's ID
-      const { error: settingsError } = await supabase.from("settings").insert({
-        user_id: userId,
-        wait_time: 8,
-      });
-
-      setNote("בבקשה אשר את כתובת המייל שלך");
-      if (settingsError) {
-        setError("שגיאה בהגדרת זמן המתנה ברירת מחדל: " + settingsError.message);
-      }
+      return;
     }
+
+    // Since email confirmation is disabled, the user is automatically logged in
+    const userId = data.user.id; // Get the newly created user's ID
+    const { error: settingsError } = await supabase.from("settings").insert({
+      user_id: userId,
+      wait_time: 8,
+    });
+
+    if (settingsError) {
+      setError("שגיאה בהגדרת זמן המתנה ברירת מחדל: " + settingsError.message);
+      return;
+    }
+
+    // Redirect to the management page after successful registration
+    router.push("/management");
   };
 
   return (

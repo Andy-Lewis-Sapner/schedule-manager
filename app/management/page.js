@@ -5,6 +5,7 @@ import { PeopleList } from "../components/PeopleList";
 import { LocationList } from "../components/LocationList";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import Popup from "../components/Popup";
 
 export default function ManagementPage() {
   const { supabase, session, loading } = useSupabase();
@@ -13,6 +14,7 @@ export default function ManagementPage() {
   const [waitTime, setWaitTime] = useState(8);
   const [originalWaitTime, setOriginalWaitTime] = useState(8);
   const [waitTimeChanged, setWaitTimeChanged] = useState(false);
+  const [popupMessage, setPopupMessage] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export default function ManagementPage() {
       .from("settings")
       .upsert([{ user_id: session.user.id, wait_time: waitTime }]);
     if (error) {
-      alert("שגיאה בשמירת זמן המתנה: " + error.message);
+      setPopupMessage("שגיאה בשמירת זמן המתנה: " + error.message);
       return;
     }
     setOriginalWaitTime(waitTime);
@@ -71,6 +73,10 @@ export default function ManagementPage() {
       transition={{ duration: 0.5 }}
       className="min-h-screen bg-gray-100 p-4 flex flex-col items-center"
     >
+      {popupMessage && (
+        <Popup message={popupMessage} onClose={() => setPopupMessage(null)} />
+      )}
+
       <h1 className="text-2xl font-bold mb-6">ניהול</h1>
       <div className="w-full max-w-md bg-white p-6 rounded-xl shadow-md">
         <h2 className="text-lg font-semibold mb-2">אנשים</h2>

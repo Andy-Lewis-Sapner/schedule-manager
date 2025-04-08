@@ -4,10 +4,12 @@ import { useSupabase } from "../context/SupabaseContext";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Popup from "../components/Popup";
 
 export default function SchedulesPage() {
   const { supabase, session, loading } = useSupabase();
   const [schedules, setSchedules] = useState([]);
+  const [popupMessage, setPopupMessage] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export default function SchedulesPage() {
       if (!error) {
         setSchedules(schedules.filter((schedule) => schedule.id !== id));
       } else {
-        alert("שגיאה במחיקת לוח זמנים: " + error.message);
+        setPopupMessage("שגיאה במחיקת לוח זמנים: " + error.message);
       }
     }
   };
@@ -65,6 +67,10 @@ export default function SchedulesPage() {
       transition={{ duration: 0.5 }}
       className="min-h-screen bg-gray-100 p-4 flex flex-col items-center"
     >
+      {popupMessage && (
+        <Popup message={popupMessage} onClose={() => setPopupMessage(null)} />
+      )}
+
       <h1 className="text-2xl font-bold mb-6">כל לוחות הזמנים</h1>
       <div className="w-full max-w-md bg-white p-6 rounded-xl shadow-md">
         {schedules.length === 0 ? (
